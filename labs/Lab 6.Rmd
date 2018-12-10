@@ -1,0 +1,273 @@
+---
+title: "Lab 6"
+author: "Coleman Breen"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Instructions
+
+**Exercises:**  4 (Pg. 302); 1 (Pgs. 316-317); 1 (Pgs. 328-329); 1, 2 (Pgs. 353-354)
+
+**Assigned:** Friday, October 26, 2018
+
+**Due:** Friday, November 2, 2018 by 5:00 PM
+
+**Submission:** Submit via an electronic document on Sakai. Must be submitted as a HTML file generated in RStudio. All assigned problems are chosen according to the textbook *R for Data Science*. You do not need R code to answer every question. If you answer without using R code, delete the code chunk. If the question requires R code, make sure you display R code. If the question requires a figure, make sure you display a figure. A lot of the questions can be answered in written response, but require R code and/or figures for understanding and explaining.
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+# Chapter 16 (Pg. 302)
+
+##  Exercise 4
+Create functions that take a vector as input and return:
+
+### a) The last value. Should you use [ or [[?  
+We should use [[]] because we are only interested in the last value, we don't need to know the name.
+```{r}
+#--> Function here
+function.a <- function(input){
+  return(input[[length(input)]])
+}
+
+#--> Demo
+x <- c(1,10,300,20,7)
+function.a(x)
+```
+
+### b) The elements at even numbered positions.
+```{r}
+#--> Function here
+function.b <- function(input) {
+  index <- c(FALSE, TRUE)
+  return(input[index])
+}
+
+#--> Demo
+x <- c(1,3,5,7,9)
+function.b(x)
+```
+
+### c) Every element except the last value.
+```{r}
+#--> Function here
+function.c <- function(input){
+  output <- input[1:length(input)-1]
+  return(output)
+}
+
+#--> Demo
+x <- 1:5
+function.c(x)
+```
+
+### d) Only even numbers (and no missing values).
+```{r}
+#--> Function here
+function.d <- function(input) {
+  index <- (input %% 2 == 0) & !(is.na(input))
+  output <- input[index]
+  return(output)
+}
+
+#--> Demo
+x <- c(1, 1, 3, 4, 6, NaN, NaN, 10, 7, 0)
+function.d(x)
+```
+
+# Chapter 17 (Pgs. 316-317)
+
+##  Exercise 1  
+Write for loops to:
+
+### a) Compute the mean of every column in mtcars
+```{r}
+#--> Load library
+data(mtcars)
+means <- rep(NaN, ncol(mtcars))
+names(means) <- names(mtcars)
+
+for (i in 1:ncol(mtcars)){
+  means[i] <- mean(mtcars[ ,i])
+}
+
+means
+
+```
+
+### b) Determine the type of each column in nyc flights13::flights
+
+```{r}
+#--> Load data and compute
+library(nycflights13)
+data(flights)
+types <- rep(NaN, ncol(flights))
+names(types) <- names(flights)
+
+for (i in names(flights)){
+ types[i] <- typeof(flights[[i]])
+}
+
+types
+
+```
+
+### c) Compute  the  number  of  unique  values  in  each  column  of iris
+```{r}
+#--> Load data
+data(iris)
+num_unique <- rep(NaN, ncol(iris))
+names(num_unique) <- names(iris)
+
+for (i in names(iris)){
+  num_unique[[i]] <- length(unique(iris[[i]]))
+}
+
+num_unique
+```
+
+### d) Generate 10 random normals for each of mu = -10, 0, 10, and 100.
+```{r}
+#--> Specify number of draws
+n <- 10
+mu <- c(-10, 0, 10, 100)
+normals <- matrix(NaN, n, length(mu))
+
+for (i in 1:length(mu)) {
+  for (j in 1:n){
+    normals[j, i] <- rnorm(1, mean = mu[i])
+  }
+}
+
+normals
+```
+
+# Chapter 17 (Pgs. 328-329)
+
+##  Exercise 1  
+Write code that uses one of the map functions to:  
+
+### a) Compute the mean of every column in mtcars.
+```{r}
+#--> Mean
+library(purrr)
+map_dbl(mtcars, mean)
+```
+
+### b) Determine the type of each column in flights13::flights.
+```{r}
+#--> Type
+map_chr(flights, typeof)
+```
+
+### c) Compute  the  number  of  unique  values  in  each  column  of iris.
+```{r}
+#--> Need to create an inline function
+map_int(iris, function(col) length(unique(col)))
+```
+
+### d) Generate 10 random normals for each of mu = -10, 0, 10, and 100.
+```{r}
+#--> Using the same shorthand that Wickham uses
+mu <- c(-10, 0, 10, 100)
+map(mu, ~ rnorm(n = 10, mean = .))
+```
+
+# Chapter 18 (Pgs. 353-354)
+
+##  Exercise 1  
+
+One  downside  of  the  linear  model  is  that  it  is  sensitive  to
+unusual  values  because  the  distance  incorporates  a  squared term. Fit a linear model to the following simulated data, and visualize the results. Rerun a few times to generate different simulated datasets. What do you notice about the model?
+```{r}
+#--> load library
+library(tidyverse)
+
+#--> Simulation a
+sim1a <- tibble(
+  x = rep(1:10, each = 3),
+  y = x * 1.5 + 6 + rt(length(x), df = 2)
+)
+
+#--> Simulation b
+sim1b <- tibble(
+  x = rep(1:10, each = 3),
+  y = x * 1.5 + 6 + rt(length(x), df = 2)
+)
+
+#--> Simulation c
+sim1c <- tibble(
+  x = rep(1:10, each = 3),
+  y = x * 1.5 + 6 + rt(length(x), df = 2)
+)
+
+#--> Simulation d
+sim1d <- tibble(
+  x = rep(1:10, each = 3),
+  y = x * 1.5 + 6 + rt(length(x), df = 2)
+)
+
+#--> Create four plots with lm
+pa <- ggplot(sim1a, aes(x=x,y=y)) +
+    geom_point() +
+    stat_smooth(method="lm")
+pb <- ggplot(sim1b, aes(x=x,y=y)) +
+    geom_point() +
+    stat_smooth(method="lm")
+pc <- ggplot(sim1c, aes(x=x,y=y)) +
+    geom_point() +
+    stat_smooth(method="lm")
+pd <- ggplot(sim1d, aes(x=x,y=y)) +
+    geom_point() +
+    stat_smooth(method="lm")
+
+#--> Arrange onto one frame
+library(gridExtra)
+grid.arrange(grobs = list(pa, pb, pc, pd), nrow = 2)
+
+```
+
+As discussed in the book, linear models are sensitive to points farther away from the plane because a linear model involves squaring terms. The first time I ran these simulations, the each had very different y-intercepts (e.g. 0, 5, and 10) because a couple points pulled the linear model one way or the other.
+
+##  Exercise 2  
+
+One way to make linear models more robust is to use a different
+distance  measure.  For  example,  instead  of  root-mean-squared
+distance, you could use mean-absolute distance:
+
+```{r}
+#--> Data simulated before
+#--> Copy function in
+measure_distance <- function(mod, data) {
+  diff <- data$y - make_prediction(mod, data)
+  mean(abs(diff))
+}
+
+#--> My precition function
+make_prediction <- function(mod, data){
+  mod[1] + mod[2] * data$x
+}
+
+#--> Use optim
+besta <- optim(c(0,0), measure_distance, data=sim1a)
+bestb <- optim(c(0,0), measure_distance, data=sim1b)
+bestc <- optim(c(0,0), measure_distance, data=sim1c)
+bestd <- optim(c(0,0), measure_distance, data=sim1d)
+
+#--> Add new models to old plots and replot
+pa <- pa + geom_abline(intercept = besta$par[1], slope = besta$par[2])
+pb <- pb + geom_abline(intercept = bestb$par[1], slope = bestb$par[2])
+pc <- pc + geom_abline(intercept = bestc$par[1], slope = bestc$par[2])
+pd <- pd + geom_abline(intercept = bestd$par[1], slope = bestd$par[2])
+
+grid.arrange(grobs = list(pa, pb, pc, pd), nrow = 2)
+
+```
+
+When I look at the second method of fitting a model (in black) I see that it is less sensitive to outliers, which is what we wanted.

@@ -1,0 +1,319 @@
+---
+title: "Lab 4"
+author: "Coleman Breen"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Instructions
+
+**Exercises:**  2,3 (Pg. 151); 2,4 (Pg. 156); 1,2 (Pgs. 160-161); 2 (Pg. 163); 2,3,4 (Pg. 168)
+
+**Assigned:** Friday, September 28, 2018
+
+**Due:** Friday, October 5, 2018 by 5:00 PM
+
+**Submission:** Submit via an electronic document on Sakai. Must be submitted as a HTML file generated in RStudio. All assigned problems are chosen according to the textbook *R for Data Science*. You do not need R code to answer every question. If you answer without using R code, delete the code chunk. If the question requires R code, make sure you display R code. If the question requires a figure, make sure you display a figure. A lot of the questions can be answered in written response, but require R code and/or figures for understanding and explaining.
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+# Chapter 9 (Pg. 151)
+
+##  Exercise 2  
+Compute the rate for table2 and table4a + table4b. You will need to perform four operations:  
+a. Extract the number of TB cases per country per year.
+b.Extract the matching population per country per year.
+c.Divide cases by population, and multiply by 10,000.
+d.Store back in the appropriate place.  
+Which representation is easiest to work with? Which is hardest? Why?
+
+```{r}
+#--> Load data
+library(tidyverse)
+
+#--> Calculate rate on table2
+# Pull out population for 1999
+table2 %>%
+  filter(year == 1999) %>%
+  filter(type == "population") -> pop1999
+
+# Pull out population for 2000
+table2 %>%
+  filter(year == 2000) %>%
+  filter(type == "population") -> pop2000
+
+# Pull out cases for 1999
+table2 %>%
+  filter(year == 1999) %>%
+  filter(type == "cases") -> cases1999
+
+# Pull out cases for 2000
+table2 %>%
+  filter(year == 2000) %>%
+  filter(type == "cases") -> cases2000
+
+# Compute the rate
+rate1999 <- (cases1999$count / pop1999$count) * 10000
+rate2000 <- (cases2000$count / pop2000$count) * 10000
+
+# Put this into a tibble
+tibble(
+  country = c(unique(table2$country), unique(table2$country)),
+  rate = c(rate1999, rate2000),
+  year = c(rep(1999, 3), rep(2000, 3))
+) -> tibble2
+
+tibble2
+```
+
+```{r}
+#--> Perform the same process for table4a + table4b
+table4a %>%
+  select(country) %>%
+  mutate(rate1999 = (table4a$`1999` / table4b$`1999`) * 10000) %>%
+  mutate(rate2000 = (table4a$`2000` / table4b$`2000`) * 10000) -> tibble4
+
+tibble4
+```
+
+I kept the general formatting of table2 and table4a+4b (i.e. keeping year as a variable in table2) in making tibbles that show the rates of TB. I found table4a+4b to be easier because you didn't have to sift out by the year and type like you did in table2. Table1 is by far the best because as Wickham demonstrates, you only need one or two lines of code to accomplish what we did in the previous two cells.
+
+
+##  Exercise 3  
+
+Re-create the plot showing change in cases over time using table2 instead of table1. What do you need to do first?  
+
+I need to filter by 'type' to just include cases and not population. I also need to change the y = cases to y = count because the variables are labeled differently between table1 and table2.
+```{r}
+#-- Libraries
+library(ggplot2)
+
+#--> Filter and plot
+table2 %>%
+  filter(type == "cases") %>%
+  ggplot(aes(year, count)) +
+  geom_line(aes(group = country), color = "grey50") +
+  geom_point(aes(color = country ))
+```
+
+# Chapter 9 (Pg. 156)
+
+##  Exercise 2  
+
+Why does this code fail?  
+
+The original code fails because "1999" and "2000" were not wrapped in ticks to indicate that they're variable names. I fixed it below:
+
+```{r}
+#--> Original (bad) code
+#table4a %>%
+#  gather(1999, 2000, key = "year", value = "cases")
+
+table4a %>%
+  gather('1999', '2000', key = "year", value = "cases")
+```
+
+##  Exercise 4  
+
+Tidy this simple tibble. Do you need to spread or gather it? What are the variables?  
+
+You need to gather it. "male" and "female" are the variables. The key is "gender" and the value becomes "count."
+
+```{r}
+#--> Original
+preg <- tribble(
+  ~pregnant, ~male, ~female,
+  "yes", NA, 10,
+  "no", 20, 12
+)
+
+#--> Fix it
+preg %>%
+  gather("male", "female", key = "gender", value = "count")
+```
+
+# Chapter 9 (Pgs. 160-161)
+
+##  Exercise 1  
+
+What do the extra and fill arguments do in seperate()? Experiemnt with the various options for the following two toy datasets.
+
+```{r}
+#--> Default
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>%
+  separate(x, c("one", "two", "three"))
+tibble(x = c("a,b,c", "d,e", "f,g,i")) %>%
+  separate(x, c("one", "two", "three"))
+
+#--> extra = "drop"
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>%
+  separate(x, c("one", "two", "three"), extra = "drop")
+tibble(x = c("a,b,c", "d,e", "f,g,i")) %>%
+  separate(x, c("one", "two", "three"), extra = "drop")
+
+#--> extra = "merge"
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>%
+  separate(x, c("one", "two", "three"), extra = "merge")
+tibble(x = c("a,b,c", "d,e", "f,g,i")) %>%
+  separate(x, c("one", "two", "three"), extra = "merge")
+
+#--> fill = "right"
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>%
+  separate(x, c("one", "two", "three"), fill = "right")
+tibble(x = c("a,b,c", "d,e", "f,g,i")) %>%
+  separate(x, c("one", "two", "three"), fill = "right")
+
+#--> fill = "left"
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>%
+  separate(x, c("one", "two", "three"), fill = "left")
+tibble(x = c("a,b,c", "d,e", "f,g,i")) %>%
+  separate(x, c("one", "two", "three"), fill = "left")
+```
+
+-If extra = "warn" (default) then R will give you a warning if/when it omits an element.  
+-If extra = "drop" then R will still drop an element but will not give a warning.  
+-If extra = "merge" then R will concatanate trailing elements together (i.e. "f,g" becomes an element).  
+
+-If fill = "warn" (default) then R will fill elements from the right and give you a warning.  
+-If fill = "right" then R will fill elements from the right but with no warning.  
+-If fill = "left" then R will fill elements from the left but with no warning.  
+
+##  Exercise 2  
+
+Both unite() and separate() have a remove argument. What does it do? Why would you set it to FALSE?  
+
+```{r}
+#--> Book example of unite()
+table5 %>%
+  unite(new, century, year, sep = "", remove = TRUE)
+
+#--> unite() with remove = F
+table5 %>%
+  unite(new, century, year, sep = "", remove = FALSE)
+```
+
+The remove argument, when set to false, does not keep the old columns that went into the unite or separate function. These two functions have a remove argument because sometimes you may not want to keep the old columns. For example, when uniting "century" and "year" into "new" we do not particularly need to keep "century" and "year" so we would set remove = FALSE. If this were a large enough data set, those extra columns could hog RAM or add unnecessary clutter to the dataset.  
+
+# Chapter 9 (Pg. 163)
+
+##  Exercise 2  
+
+What does the direction argument to fill() do?
+
+```{r}
+#--> Recreate dataset
+treatment <- tribble(
+  ~person, ~treatment, ~response,
+  "Derrick Whitmore", 1, 7,
+  NA, 2, 10,
+  NA, 3, 9,
+  "Katherine Burke", 1, 4
+)
+
+#--> Default fill()
+treatment %>%
+  fill(person)
+
+#--> Opposite direction
+treatment %>%
+  fill(person, .direction = "up")
+```
+
+The default fill direction is "the last observation carried forward." If we set .direction = "up" then we get the next observation carried backward. Another way to think about it is that we are keeping "the last observation carried forward," but we are traversing the rows in the opposite direction. In this example, we see "Katherine Burke" spread upward when .direction = "up."
+
+# Chapter 9 (Pg. 168)
+
+##  Exercise 2  
+
+What happens if you neglect the mutate() step? (mutate(key = stringr::str_replace(key, "newrel", "new_rel")))  
+
+```{r}
+#--> Rebuild Wickham's pipe from who dataset
+library(stringr)
+
+who1 <- who %>%
+  gather(
+    new_sp_m014:newrel_f65, key = "key",
+    value = "cases",
+    na.rm = TRUE
+  )
+
+head(who1)
+
+#--> "mutate() step"
+who2 <- who1 %>%
+  mutate(key = stringr::str_replace(key, "newrel", "new_rel"))
+
+head(who2)
+
+#--> The part of the pipeline that's dependent on the above
+who3 <- who2 %>%
+  separate(key, c("new", "type", "sexage"), sep ="_")
+
+head(who3)
+```
+
+If we skip the mutate() step--which is the second of three parts in the code above--then the third piece of the code will not work. This is because the call to separate() will not work since there were originally observations in "key" that looked like "newrel..." and we had separate() operate on the "_" delimiter. Therefore, it would not be able to separate() because there were missing underscores.  
+
+##  Exercise 3  
+
+I claimed that iso2 and iso3 were redundant with country. Confirm this claim.  
+
+```{r}
+#--> How many unique tuples of country, iso2, iso3 are there?
+who %>%
+  unite(new, country, iso2, iso3) -> who1
+
+#--> Are there more tuples of country, iso2, iso3 than there are unique countries?
+length(unique(who1$new)) == length(unique(who$country))
+length(unique(who1$new))
+```
+
+Using unite(), I combined "country," "iso2," and "iso3." If there were more unique tuples of those three than there were countries, than that would show we are getting some extra information from "iso2" or "iso3" that wasn't encapsulated in "country" alone. However, we can see from the above output that there are 219 countries and 219 tuples of "country," "iso2," and "iso3." Therefore, "iso2" and "iso3" are redundant.
+
+##  Exercise 4  
+
+For each country, year, and sex compute the total number of cases of TB. Make an informative visualization of the data.  
+
+```{r}
+#--> Rebuild the tidying pipeline
+who1 <- who %>%
+  gather(
+    new_sp_m014:newrel_f65, key = "key",
+    value = "cases",
+    na.rm = TRUE
+  )
+
+who2 <- who1 %>%
+  mutate(key = stringr::str_replace(key, "newrel", "new_rel"))
+
+who3 <- who2 %>%
+  separate(key, c("new", "type", "sexage"), sep ="_")
+
+who4 <- who3 %>%
+  select(-new, -iso2, -iso3)
+
+who5 <- who4 %>%
+  separate(sexage, c("sex", "age"), sep = 1)
+
+#--> Count how many cases, irregardless of "type"
+who5 %>%
+  group_by(country, year, sex) %>%
+  summarise(totalCases = sum(cases)) %>%
+  unite(countrySex, country, sex, remove = FALSE) -> who6
+
+#--> Plot
+who6 %>%
+  filter(year > 1997) %>%
+  ggplot(aes(x = year, y = totalCases, group = countrySex, color = sex)) +
+  geom_line()
+  
+```
+
+Note that I've only included the last 20 years of data to keep the graph clean.

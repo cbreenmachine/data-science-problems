@@ -1,0 +1,180 @@
+---
+title: "Lab 5"
+author: "Coleman Breen"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Instructions
+
+**Exercises:**  1,3 (Pg. 227); 2 (Pg. 232); 1,2 (Pg. 235); 
+
+**Assigned:** Friday, October 12, 2018
+
+**Due:** Friday, October 19, 2018 by 5:00 PM
+
+**Submission:** Submit via an electronic document on Sakai. Must be submitted as a HTML file generated in RStudio. All assigned problems are chosen according to the textbook *R for Data Science*. You do not need R code to answer every question. If you answer without using R code, delete the code chunk. If the question requires R code, make sure you display R code. If the question requires a figure, make sure you display a figure. A lot of the questions can be answered in written response, but require R code and/or figures for understanding and explaining.
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+# Chapter 12 (Pg. 227)
+
+##  Exercise 1
+
+Explore the distribution of `rincome`. What makes the default bar chart hard to understand? How could you improve the plot?
+
+The first version of the bar chart includes factors "No answer", "Don't know", "Refused", and "Not applicable." We don't want to have those factors distort the scale and keep us from analyzing reported income. Additionally the x tick labels are unreadable and the bars are in descending order (highest income towards the left). I've corrected these things in the second plot.
+
+```{r}
+#--> Load data from General Social Survey
+DATA <- forcats::gss_cat
+
+#--> Create 'default' bar chart
+DATA %>%
+  ggplot() +
+  geom_bar(aes(rincome)) + 
+  ggtitle("Default version")
+
+#--> Plot with corrections
+DATA %>%
+  ggplot() +
+  geom_bar(aes(rincome)) +
+  ggtitle("Fixed version with non-answers") +
+  scale_x_discrete(limits = rev(levels(DATA$rincome))) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Reported annual income") +
+  ylab("Count")
+
+#--> Filter and plot again
+bad_answers <- c("No answer", "Don't know", "Refused", "Not applicable")
+
+DATA %>%
+  filter(!(rincome %in% bad_answers)) -> DATA2
+DATA2$rincome <- factor(DATA2$rincome)
+
+DATA2 %>%
+  ggplot() +
+  geom_bar(aes(rincome)) +
+  ggtitle("Fixed version without non-answers") +
+  scale_x_discrete(limits = rev(levels(DATA2$rincome))) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Reported annual income") +
+  ylab("Count")
+  
+```
+
+##  Exercise 3
+
+Which `relig` does `denom` apply to? How can you find out with a table? How can you find out with a visualization?
+
+Once we remove `denom` observations "No answer", "Other", "Don't know", "Not applicable", or "No denomination," all that's left in `relig` is `Protestant`. Therefore, all of those responses to `denom` were to further specify what type of protestantism people followed. We can see the same thing in the tile plot below. 
+
+```{r}
+#--> What types of answers are there in `denom`
+unique(DATA$denom)
+
+#--> Filter out the non-answers and see what's left
+bad_answers <- c("No answer", "Other", "Don't know", "Not applicable", "No denomination")
+DATA %>%
+  filter(!(denom %in% bad_answers)) %>%
+  count(relig)
+
+#--> Demonstrate as a count map (modelled on lecture 8 code)
+DATA %>%
+  count(relig, denom) %>%
+  ggplot(aes(relig, denom)) +
+  geom_tile(aes(fill = n))
+```
+
+# Chapter 12 (Pg. 232)
+
+##  Exercise 2
+
+For each factor in `gss_cat` identify whether the order of the levels is arbitrary or principled.
+
+- `marital` is fairly principled: it goes "No answer", "Never married", "Seperated", "Divorced", "Widowed", "Married".  
+- `race` is arbitrary.  
+- `rincome` is principled. It goes in descending order, aside from the non-answers (e.g. "Don't know").  
+- `partyid` is principled. It goes from strong Republican to Independent to Strong Democrat with weaker party affiliations in between.  
+- `relig` is arbitrary.  
+- `denom` is arbitrary.
+
+```{r}
+#--> Which variables are factors
+DATA %>%
+  keep(is.factor) %>% 
+  names() -> fact_vars
+
+#--> Plot all of them
+for (i in 1:length(fact_vars)){
+  DATA %>%
+    ggplot() +
+    geom_bar(aes_string(fact_vars[i])) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) -> my_plot
+  print(my_plot)
+}
+```
+
+
+# Chapter 12 (Pg. 235)
+
+##  Exercise 1
+
+How have the proportions of people identifying as Democrat, Republican, and Independent changed over time?
+
+Looking at the plot below, we can see that there has been a slight decline in the percentage of Republicans since 2004. The percentage of Democrats and Indpendents has varied from year to year. However, while the percentage of Democrats in 2014 is about the same as it was in 2000, the percentage of Independents has risen slightly.
+
+```{r}
+#--> Use factors to group based on party
+DATA %>%
+  mutate(partyid2 = fct_collapse(partyid,
+         other = c("No answer", "Don't know", "Other party"),
+         rep = c("Strong republican", "Not str republican"),
+         ind = c("Ind,near rep", "Independent", "Ind,near dem"),
+         dem = c("Not str democrat", "Strong democrat"))) -> DATA3
+
+#--> Get percentages based on year
+DATA3 %>%
+  count(year, partyid2) %>%
+  group_by(year) %>%
+  mutate(percent = n / sum(n)) -> DATA4
+
+#--> Plot
+DATA4 %>%
+  ggplot(aes(x = year, y = percent, color = partyid2)) +
+  geom_point() +
+  geom_line() 
+```
+
+##  Exercise 2
+
+How could you collapse `rincome` into a small set of categories?
+
+We will collapse them into `unknown` for non-answers (e.g. "Don't know", "No answer") and then break the others into $5000 bins.
+
+```{r}
+#--> Collapse data
+unique(DATA$rincome)
+
+DATA %>%
+  mutate(rincome = fct_collapse(rincome,
+    'unknown' = c("No answer", "Don't know", "Refused", "Not applicable"),
+    '$0 to 4999' = c("Lt $1000", "$1000 to 2999", "$3000 to 3999", "$4000 to 4999"),
+    '$5000 to 9999' = c("$5000 to 5999", "$6000 to 6999", "$7000 to 7999", "$8000 to 9999"))) -> DATA5
+
+#--> Plot the new and improved
+DATA5 %>%
+  ggplot(aes(rincome)) +
+  geom_bar() +
+  scale_x_discrete(limits = rev(levels(DATA5$rincome))) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Reported annual income") +
+  ylab("Count") +
+  ggtitle("Collapsed factors")
+```

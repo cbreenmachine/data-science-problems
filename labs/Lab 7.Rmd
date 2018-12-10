@@ -1,0 +1,146 @@
+---
+title: "Lab 7"
+author: "Coleman Breen"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Instructions
+
+**Exercises:**  1,4 (Pg. 358); 1,4 (Pgs. 371)
+
+**Assigned:** Friday, November 2, 2018
+
+**Due:** Friday, November 9, 2018 by 5:00 PM
+
+**Submission:** Submit via an electronic document on Sakai. Must be submitted as a HTML file generated in RStudio. All assigned problems are chosen according to the textbook *R for Data Science*. You do not need R code to answer every question. If you answer without using R code, delete the code chunk. If the question requires R code, make sure you display R code. If the question requires a figure, make sure you display a figure. A lot of the questions can be answered in written response, but require R code and/or figures for understanding and explaining.
+
+```{r, include=FALSE}
+library(tidyverse)
+library(modelr)
+```
+
+
+# Chapter 18 (Pg. 358)
+
+##  Exercise 1  
+
+Instead of using `lm()` to fit a straight line, you can use `loess()` to  fit  a  smooth  curve.  Repeat  the  process  of model  fitting, grid generation, predictions, and visualization on sim1 using `loess()` instead  of `lm()`. How  does  the  result compare  to `geom_smooth()`?
+
+```{r}
+#--> Load in data
+data("sim1")
+
+#--> Model fitting
+sim1_loess <- loess(y ~ x, data = sim1)
+
+#--> Grid generation
+grid <- sim1 %>%
+  data_grid(x)
+
+#--> Add predictions to grid
+grid <- grid %>%
+  add_predictions(sim1_loess)
+
+#--> Visualization
+p1 <- ggplot(data = sim1, aes(x = x)) +
+    geom_point(aes(y = y)) +
+    geom_line(data = grid, aes(y = pred), color = "red", size = 1) +
+    ggtitle("My loess model")
+
+p2 <- ggplot(data = sim1, aes(x = x)) +
+    geom_point(aes(y = y)) +
+    geom_smooth(data = grid, aes(y = pred)) +
+    ggtitle("R's geom_smooth()")
+
+library(gridExtra)
+grid.arrange(grobs = list(p1,p2), ncol = 2)
+
+```
+
+The two methods look nearly identical to me. There may be slight differences but to me, `geom_smooth()` and the model built on `loess()` are very similar.
+
+##  Exercise 4  
+Why might you want to look at a frequency polygon of absolute
+residuals?  What  are  the  pros  and  cons  compared  to looking  at the raw residuals?  
+
+A frequency polygon is useful because it allows us to see the spread of residuals, rather than looking at raw numbers. Looking at the absolute residuals is also useful because it can tell us if there is a pattern at certain distances from the mean (0). Taking the absolute value simplifies the spread and can make those patterns easier to detect. For example, if the model over or underestimates by ~2, then we expect to see a spike at 2 when looking at the absolute values of residuals.  
+
+A drawback of using a frequency polygon of absolute residuals is that we lose information on the sign. We risk having a model that systematically over or underestimates the response variable.
+
+```{r}
+#--> Fit residuals and plot
+sim1 <- sim1 %>%
+  add_residuals(sim1_loess)
+
+p1 <- ggplot(sim1, aes(x = abs(resid))) +
+  geom_freqpoly() +
+  ggtitle("Absolute value of residuals")
+
+p2 <- ggplot(sim1, aes(x = (resid))) +
+  geom_freqpoly() +
+  ggtitle("Residuals with sign")
+
+grid.arrange(grobs = list(p1,p2), ncol = 2)
+```
+
+# Chapter 18 (Pg. 371)
+
+##  Exercise 1  
+What  happens  if  you  repeat  the  analysis  of sim2 using  a model without  an  intercept?  What  happens  to  the  model equation? What happens to the predictions?  
+
+If we repeat the analysis without an intercept, the coefficients of the two linear models are the same, so the model equations are the same. Further, the linear models will give back the same predictions.
+
+```{r}
+#--> Load data
+data("sim2")
+
+#--> Model without intercept, drop 1s in the beginning
+mod2.1 <- lm(y ~ x, data = sim2) #original
+mod2.2 <- lm(y ~ x - 1, data = sim2) #no intercept
+
+mod2.1
+mod2.2
+
+#--> Compare using grid
+grid <- sim2 %>%
+  data_grid(x) %>%
+  spread_predictions(mod2.1, mod2.2)
+
+grid
+```
+
+##  Exercise 4  
+For sim4, which of mod1 and mod2 is better? I think mod2 does a
+slightly  better  job  at  removing  patterns,  but  it's pretty subtle. Can you come up with a plot to support my claim?  
+
+The first round of plotting does not show much of a difference between mod1 and mod2. The mod2 model has a slightly lower standard deviation, which could hint at mod2 being subtly better than mod1.
+
+```{r}
+#--> Load data
+data("sim4")
+
+#--> Fit models
+mod1 <- lm(y ~ x1 + x2, data = sim4)
+mod2 <- lm(y ~ x1 * x2, data = sim4)
+
+#--> Add residuals
+sim4_mods <- gather_residuals(sim4, mod1, mod2)
+
+#--> Plot residuals
+ggplot(sim4_mods, aes(x = resid, colour = model)) +
+  geom_freqpoly(binwidth = 0.5) #standard in this chptr
+
+#--> Plot absolute values
+ggplot(sim4_mods, aes(x = abs(resid), colour = model)) +
+  geom_freqpoly(binwidth = 0.5)
+
+#--> Look at standard deviation
+sim4_mods %>%
+  group_by(model) %>%
+  summarise(resid = sd(resid))
+```

@@ -1,0 +1,197 @@
+---
+title: "Lab 2"
+author: "Mario Giacomazzo"
+date: "August 25, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Instructions
+
+**Exercises:**  1-3 (Pgs. 49-50); 2-4 (Pg. 51); 2,4 (Pg. 54); 1-4 (Pg. 58)
+
+**Assigned:** Friday, August 31, 2018
+
+**Due:** Friday, September 7, 2018 by 5:00 PM
+
+**Submission:** Submit via an electronic document on Sakai. Must be submitted as a html file generated in RStudio. All assigned problems are chosen according to the textbook *R for Data Science*. 
+
+**Coleman Breen**
+
+```{r, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(nycflights13)
+```
+
+I'm going to look at the data before jumping into the exercises.
+```{r}
+head(flights)
+```
+
+# Chapter 3 (Pgs. 49-50)
+
+##  Exercise 1
+Find all flights that:  
+1. Had an arrival delay of 2+ hours  
+2. Flew to Houston (IAH or HOU)  
+3. Were operated by United, American or Delta  
+4. Departed in summer (July-September)  
+5. Arrived more than two hours late, but didn't leave late  
+6. Were delayed by at least an hour but made up over 30 mins in flight  
+7. Departed between midnight and 6 AM
+```{r}
+#--> Had an arrival delay of 2+ hours
+filter(flights, dep_delay >= 120)
+
+#--> Flew to Houston (IAH or HOU)
+filter(flights, dest == "IAH" | dest == "HOU")
+
+#--> Were operated by United, American or Delta
+filter(flights, carrier %in% c("UA", "AA", "DL"))
+
+#--> Departed in summer (July-September)
+filter(flights, month %in% c(7, 8, 9))
+
+#--> Arrived more than two hours late, but didn't leave late
+filter(flights, dep_delay <= 0 & arr_delay > 120)
+
+#--> Were delayed by at least an hour but made up over 30 mins in flight
+filter(flights, (dep_delay >= 60) & (dep_delay - arr_delay > 30))
+
+#--> Departed between midnight and 6 AM
+filter(flights, (dep_time <= 600) & (dep_time >= 0)) 
+# Either departed between 12:01am and 6am or departed at 12am on the dot
+```
+
+##  Exercise 2
+What does between() do? Can you use it simplify the preceding code?  
+1. between() gives all values in between the left and right bounds, inclusive.  
+2. See code below for times when between() is helpful:
+```{r}
+#--> Purpose
+?between()
+between(c(1,3,7,10),4,8)
+
+#--> When between() is helpful...
+# Departed in summer (July-September)
+filter(flights, between(month, 7, 9))
+```
+The last one (Departed between midnight and 6 AM) could also use between(). But in order to do so we would need to create another vector where 2400 is changed to 0. That would be more work than what is in Ex. 1.
+
+##  Exercise 3
+How many missing flights have a missing dep_time? What other variables are missing? What might these rows represent?  
+1. 8255 flights are missing dep_time.  
+2. dep_delay, arr_time, arr_delay, tailnum, air_time also have missing values.  
+3. Missing values from dep_time and dep_delay may indicate planes that never left because of weather, mechanical issues, or other logistical issues. Missing values from arr_delay and air_time are planes that may have made emergency landings (e.g. a passenger had a heart attack or weather forced an early touch down). Finally, missing tailnum could be any of the reasons listed above or perhaps represent a flight that was cancelled far in advance and thus was never matched to a specific plane.
+```{r}
+#--> Missing dep_time
+colSums(is.na(flights))
+```
+
+# Chapter 3 (Pg. 51)
+
+##  Exercise 2
+Sort flights to find the most delayed flights. Find the flights that left earliest.
+```{r}
+#--> Most delayed departures
+arrange(flights, desc(dep_delay))
+
+#--> Earliest departures
+arrange(flights, dep_delay)
+```
+
+##  Exercise 3
+Sort flights to find the fastest flights.
+```{r}
+#--> I'm taking this to mean the shortest flights (smalles air_time)
+arrange(flights, air_time) 
+# Looks like the shortest flights are in the 20 min range.
+```
+
+##  Exercise 4
+Which flights travelled the longest? Which travelled the shortest?
+
+There's some ambiguity here--does he mean by distance or by time? I am going to take this to mean by distance.
+```{r}
+#--> Longest
+arrange(flights, desc(distance))
+
+#--> Shortest
+arrange(flights, distance)
+```
+
+# Chapter 3 (Pg. 54)
+
+##  Exercise 2
+What happens if you include the name of a variable multiple times in a select() call?
+```{r}
+#--> Try it and find out
+select(flights, dep_time, dep_time, dep_time)
+```
+
+If you call select() with duplicate variable names, the function will still only return one copy. In other words, duplicate variables do not change the output.
+
+##  Exercise 4
+Does the result of running the following code surprise you? How do the select helpers deal with case by default? How can you change that default?
+```{r}
+#--> Original code
+select(flights, contains("TIME"))
+```
+1. The result does surprise me. I was expecting for the above select() call to not return anything because "TIME" in many programming languages is not the same as "time." Because they are unequal, I expected the select() function to not find anything.
+2. The default is to ignore case.
+3. We could change ignore.case = TRUE to ignore.case = FALSE. That will make the helper functions pay attention to case.
+
+# Chapter 3 (Pg. 58)
+
+##  Exercise 1
+Currently dep_time and sched_dep_time are convenient to look at, but hard to compute with because they're not really continuous numbers. Convert them to a more convenient representation of number of minutes since midnight.
+```{r}
+#--> Conversion to more workable dep_time and sched_dep_time
+mutate(flights, 
+       dep_time = (dep_time %/% 100 * 60) + (dep_time %% 100),
+       sched_dep_time = (sched_dep_time %/% 100 * 60) + (sched_dep_time %% 100)
+       )
+# Note that a plane that leaves at midnight leaves at 1440 mins past the previous midnight. In other words, we restart to "0" just after midnight, not at midnight. 
+```
+
+##  Exercise 2
+Compare air_time with arr_time - dep_time. What do you expect to see? What do you see? What do you need to do to fix it?  
+1. I expect to see there to be difference between air_time and arr_time - dep_time because we haven't corrected the air_time and dep_time to be minutes since midnight.  
+2. I see what I was expecting.  
+```{r}
+#--> Funky way of computing air_time
+transmute(flights, air_time, 
+          bad_air_time = arr_time - dep_time)
+
+#--> Better way of computing air_time
+# Fix arr_time and dep_time using the method from Ex. 1
+transmute(flights,
+          air_time,
+          arr_time = arr_time %/% 100 * 60 + arr_time %% 100,
+          dep_time = dep_time %/% 100 * 60 - dep_time %% 100
+) %>% 
+  transmute(air_time,
+            my_air_time = (arr_time - dep_time + 60*24) %% 1440)
+```
+
+3. This method is still not quite right. I believe that it may be because we are not accounting for taxiing/parking. So a flight may "depart" at noon but not leave the runway until 12:20pm. Then my method of compting air time would be 20 minutes greater than what the data set shows. There could be something else that's playing into the difference. 
+
+##  Exercise 3
+Compare dep_time, sched_dep_time, and dep_delay. How would you expect those three numbers to be related?    
+It should be that sched_dep_time - dep_time = dep_delay. That looks to be the case for the data below. Interestingly, dep_delay has been corrected to account for the discontinuity in the other two variables. For example, if dep_time = 558 and sched_dep_time = 600, then dep_delay = -2 instead of -42. That's good because we don't need to do any correcting!
+```{r}
+#--> Look at the variables in question
+select(flights, dep_time, sched_dep_time, dep_delay)
+```
+
+##  Exercise 4
+Find the 10 most delayed flights using a ranking function. How do you want to handle ties? Carefully read the documentation for min_rank()   
+There is no need to specify any particular way of handling of ties. So, if multiple planes show a 20 min delay, there is no particular order they should appear. All this is to say that the fefault setting is fine in this case. If we wanted to rank by dep_delay then carrier we could do that later. But for now, this is good.
+```{r}
+#--> Finding the most delayed flights
+head(arrange(flights, min_rank(desc(dep_delay))), 10)
+```
